@@ -20,7 +20,11 @@ defmodule Unifex.CodeGenerator.BaseTypes.Payload do
 
     @impl true
     def generate_initialization(name, _ctx) do
-      ~g<#{name} = (UnifexPayload *) unifex_alloc(sizeof (UnifexPayload));>
+      ~g"""
+      #{name} = (UnifexPayload *) unifex_alloc(sizeof (UnifexPayload));
+      #{name}->type = UNIFEX_PAYLOAD_BINARY;
+      #{name}->owned = 0;
+      """
     end
 
     @impl true

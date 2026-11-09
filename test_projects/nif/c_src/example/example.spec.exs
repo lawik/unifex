@@ -34,6 +34,10 @@ spec test_list(in_list :: [int]) :: {:ok :: label, out_list :: [int]}
 
 spec test_list_of_strings(in_strings :: [string]) :: {:ok :: label, out_strings :: [string]}
 
+spec test_payload(in_payload :: payload) :: {:ok :: label, out_payload :: payload}
+
+spec test_list_of_payloads(in_payloads :: [payload]) :: {:ok :: label, out_payloads :: [payload]}
+
 spec test_pid(in_pid :: pid) :: {:ok :: label, out_pid :: pid}
 
 spec test_state(state) :: {:ok :: label, state}

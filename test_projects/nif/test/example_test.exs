@@ -44,6 +44,31 @@ defmodule ExampleTest do
     assert {:ok, ^l} = Example.test_list_of_strings(l)
   end
 
+  test "payload" do
+    assert {:ok, <<2, 2, 3>>} = Example.test_payload(<<1, 2, 3>>)
+
+    shm = Shmex.new(<<1, 2, 3>>)
+    assert {:ok, <<2, 2, 3>>} = Example.test_payload(shm)
+
+    assert_raise ErlangError, ~r/unifex_parse_arg.*in_payload.*payload/i, fn ->
+      Example.test_payload(:not_a_payload)
+    end
+
+    # a Shmex struct pointing to a segment that does not exist
+    assert_raise ErlangError, ~r/unifex_parse_arg.*in_payload.*payload/i, fn ->
+      Example.test_payload(%Shmex{name: "/unifex-test-nonexistent", size: 0, capacity: 0})
+    end
+  end
+
+  test "list of payloads" do
+    payloads = [<<1, 2, 3>>, <<4, 5>>]
+    assert {:ok, ^payloads} = Example.test_list_of_payloads(payloads)
+
+    assert_raise ErlangError, ~r/unifex_parse_arg.*in_payloads.*payload/i, fn ->
+      Example.test_list_of_payloads([<<1, 2, 3>>, :not_a_payload, <<4, 5>>])
+    end
+  end
+
   test "pid" do
     pid = self()
     assert {:ok, ^pid} = Example.test_pid(pid)

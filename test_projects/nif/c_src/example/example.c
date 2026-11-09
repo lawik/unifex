@@ -49,6 +49,22 @@ UNIFEX_TERM test_list_of_strings(UnifexEnv *env, char **in_strings,
   return test_list_of_strings_result_ok(env, in_strings, list_length);
 }
 
+UNIFEX_TERM test_payload(UnifexEnv *env, UnifexPayload *in_payload) {
+  UnifexPayload out_payload;
+  unifex_payload_alloc(env, UNIFEX_PAYLOAD_BINARY, in_payload->size,
+                       &out_payload);
+  memcpy(out_payload.data, in_payload->data, out_payload.size);
+  out_payload.data[0]++;
+  UNIFEX_TERM result = test_payload_result_ok(env, &out_payload);
+  unifex_payload_release(&out_payload);
+  return result;
+}
+
+UNIFEX_TERM test_list_of_payloads(UnifexEnv *env, UnifexPayload **in_payloads,
+                                  unsigned int list_length) {
+  return test_list_of_payloads_result_ok(env, in_payloads, list_length);
+}
+
 UNIFEX_TERM test_pid(UnifexEnv *env, UnifexPid in_pid) {
   return test_pid_result_ok(env, in_pid);
 }

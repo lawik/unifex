@@ -4,18 +4,24 @@ ErlNifResourceType *UNIFEX_PAYLOAD_GUARD_RESOURCE_TYPE = NULL;
 
 int unifex_payload_from_term(ErlNifEnv *env, ERL_NIF_TERM term,
                              UnifexPayload *payload) {
+  // Make sure the payload is safe to pass to unifex_payload_release even if
+  // parsing fails below.
+  payload->type = UNIFEX_PAYLOAD_BINARY;
+  payload->owned = 0;
+
   int res = enif_inspect_binary(env, term, &payload->payload_struct.binary);
   if (res) {
     payload->data = payload->payload_struct.binary.data;
     payload->size = payload->payload_struct.binary.size;
-    payload->type = UNIFEX_PAYLOAD_BINARY;
-    payload->owned = 0;
     return res;
   }
 
   res = shmex_get_from_term(env, term, &payload->payload_struct.shm);
   if (res) {
-    shmex_open_and_mmap(&payload->payload_struct.shm);
+    if (SHMEX_RES_OK != shmex_open_and_mmap(&payload->payload_struct.shm)) {
+      shmex_release(&payload->payload_struct.shm);
+      return 0;
+    }
     payload->data = payload->payload_struct.shm.mapped_memory;
     payload->size = payload->payload_struct.shm.capacity;
     payload->type = UNIFEX_PAYLOAD_SHM;

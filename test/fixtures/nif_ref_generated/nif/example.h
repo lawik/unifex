@@ -63,6 +63,9 @@ UNIFEX_TERM test_list(UnifexEnv *env, int *in_list,
                       unsigned int in_list_length);
 UNIFEX_TERM test_list_of_strings(UnifexEnv *env, char **in_strings,
                                  unsigned int in_strings_length);
+UNIFEX_TERM test_payload(UnifexEnv *env, UnifexPayload *in_payload);
+UNIFEX_TERM test_list_of_payloads(UnifexEnv *env, UnifexPayload **in_payloads,
+                                  unsigned int in_payloads_length);
 UNIFEX_TERM test_pid(UnifexEnv *env, UnifexPid in_pid);
 UNIFEX_TERM test_state(UnifexEnv *env, UnifexState *state);
 UNIFEX_TERM test_example_message(UnifexEnv *env, UnifexPid pid);
@@ -100,6 +103,10 @@ UNIFEX_TERM test_list_result_ok(UnifexEnv *env, int const *out_list,
                                 unsigned int out_list_length);
 UNIFEX_TERM test_list_of_strings_result_ok(UnifexEnv *env, char **out_strings,
                                            unsigned int out_strings_length);
+UNIFEX_TERM test_payload_result_ok(UnifexEnv *env, UnifexPayload *out_payload);
+UNIFEX_TERM test_list_of_payloads_result_ok(UnifexEnv *env,
+                                            UnifexPayload **out_payloads,
+                                            unsigned int out_payloads_length);
 UNIFEX_TERM test_pid_result_ok(UnifexEnv *env, UnifexPid out_pid);
 UNIFEX_TERM test_state_result_ok(UnifexEnv *env, UnifexState *state);
 UNIFEX_TERM test_example_message_result_ok(UnifexEnv *env);
