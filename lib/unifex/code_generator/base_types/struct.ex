@@ -173,6 +173,14 @@ defmodule Unifex.CodeGenerator.BaseTypes.Struct do
           }
           """
         ])
+        |> Enum.concat([
+          ~g"""
+          {
+            // unknown key: skip its value to stay in sync with the term stream
+            ei_skip_term(#{arg}->buff, #{arg}->index);
+          }
+          """
+        ])
         |> Enum.join(" else ")
 
       ~g"""
@@ -185,6 +193,10 @@ defmodule Unifex.CodeGenerator.BaseTypes.Struct do
             int decode_key_result = ei_decode_atom(#{arg}->buff, #{arg}->index, key);
             if (decode_key_result == 0) {
               #{fields_parsing}
+            } else {
+              // a key that is not an atom cannot be matched against the fields
+              decode_map_header_result = decode_key_result;
+              break;
             }
           }
         }

@@ -35,6 +35,20 @@ defmodule ExampleTest do
     refute match?({:ok, false}, Unifex.CNode.call(context[:cnode], :test_bool, [true]))
   end
 
+  test "bool with invalid argument", context do
+    cnode = context[:cnode]
+
+    assert_raise RuntimeError, ~r/argument.*in_bool.*bool/i, fn ->
+      Unifex.CNode.call(cnode, :test_bool, [:an_atom_that_is_much_longer_than_the_word_false])
+    end
+
+    assert_raise RuntimeError, ~r/argument.*in_bool.*bool/i, fn ->
+      Unifex.CNode.call(cnode, :test_bool, [1])
+    end
+
+    assert {:ok, true} = Unifex.CNode.call(cnode, :test_bool, [true])
+  end
+
   test "float", context do
     assert {:ok, +0.0} = Unifex.CNode.call(context[:cnode], :test_float, [+0.0])
     assert {:ok, 0.1} = Unifex.CNode.call(context[:cnode], :test_float, [0.1])
@@ -73,6 +87,24 @@ defmodule ExampleTest do
       list = [x, x + 1, x + 2]
       assert {:ok, ^list} = Unifex.CNode.call(context[:cnode], :test_list, [list])
     end)
+  end
+
+  test "list as string of various lengths", context do
+    1..40
+    |> Enum.each(fn len ->
+      list = Enum.to_list(1..len)
+      assert {:ok, ^list} = Unifex.CNode.call(context[:cnode], :test_list, [list])
+    end)
+  end
+
+  test "list as string with elements of invalid type", context do
+    cnode = context[:cnode]
+
+    assert_raise RuntimeError, ~r/argument.*in_strings.*string/i, fn ->
+      Unifex.CNode.call(cnode, :test_list_of_strings, [[1, 2, 3]])
+    end
+
+    assert {:ok, ["a"]} = Unifex.CNode.call(cnode, :test_list_of_strings, [["a"]])
   end
 
   test "list", context do
@@ -136,6 +168,20 @@ defmodule ExampleTest do
     end
   end
 
+  test "struct with unknown keys", context do
+    cnode = context[:cnode]
+
+    my_struct = %My.Struct{id: 1, name: "Jan Kowlaski", data: [1, 2, 3]}
+    struct_with_extra_key = Map.put(my_struct, :extra, [4, 5, 6])
+    assert {:ok, ^my_struct} = Unifex.CNode.call(cnode, :test_my_struct, [struct_with_extra_key])
+
+    struct_with_non_atom_key = Map.put(my_struct, "extra", 42)
+
+    assert_raise RuntimeError, ~r/argument.*in_struct.*my_struct/i, fn ->
+      Unifex.CNode.call(cnode, :test_my_struct, [struct_with_non_atom_key])
+    end
+  end
+
   test "enum", context do
     cnode = context[:cnode]
 
@@ -157,6 +203,21 @@ defmodule ExampleTest do
     assert_raise RuntimeError, ~r/undefined.*function.*abc/i, fn ->
       Unifex.CNode.call(context[:cnode], :abc)
     end
+  end
+
+  test "malformed message", context do
+    cnode = context[:cnode]
+
+    assert {:raise, "Unifex CNode: malformed message"} =
+             Bundlex.CNode.call(cnode.bundlex_cnode, :not_a_tuple)
+
+    assert {:raise, "Unifex CNode: malformed message"} =
+             Bundlex.CNode.call(cnode.bundlex_cnode, {})
+
+    assert {:raise, "Unifex CNode: malformed message"} =
+             Bundlex.CNode.call(cnode.bundlex_cnode, {1, 2})
+
+    assert {:ok, :unifex} = Unifex.CNode.call(cnode, :test_atom, [:unifex])
   end
 
   test "wrong arguments", context do

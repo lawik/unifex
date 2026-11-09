@@ -58,12 +58,20 @@ void unifex_cnode_add_to_released_states(UnifexEnv *env, void *state) {
 
 ei_x_buff unifex_cnode_string_to_list(UnifexCNodeInBuff *origin_buff,
                                       unsigned int strlen) {
-  char *str = malloc(sizeof(char) * strlen);
-  ei_decode_string(origin_buff->buff, origin_buff->index, str);
-  unsigned char *unsigned_str = (unsigned char *)str;
-
   ei_x_buff buff;
   ei_x_new(&buff);
+
+  // ei_decode_string copies strlen bytes and appends a terminating NUL
+  char *str = malloc(sizeof(char) * (strlen + 1));
+  if (ei_decode_string(origin_buff->buff, origin_buff->index, str)) {
+    // Should not happen for an ERL_STRING_EXT term. Encode something that is
+    // not a list, so that the generated code fails to parse the argument.
+    ei_x_encode_atom(&buff, "unifex_invalid_string");
+    free(str);
+    return buff;
+  }
+  unsigned char *unsigned_str = (unsigned char *)str;
+
   ei_x_encode_list_header(&buff, strlen);
   for (unsigned int i = 0; i < strlen; i++) {
     ei_x_encode_longlong(&buff, (long long)unsigned_str[i]);
@@ -102,16 +110,20 @@ int unifex_cnode_receive(UnifexEnv *env) {
       env->reply_to = &emsg.from;
       int index = 0;
       int version;
-      ei_decode_version(in_buff.buff, &index, &version);
-
       int arity;
-      ei_decode_tuple_header(in_buff.buff, &index, &arity);
-
       char fun_name[2048];
-      ei_decode_atom(in_buff.buff, &index, fun_name);
+      UNIFEX_TERM result;
 
-      UnifexCNodeInBuff buff = {.buff = in_buff.buff, .index = &index};
-      UNIFEX_TERM result = unifex_cnode_handle_message(env, fun_name, &buff);
+      // The message has to be a tuple with the function name as the first
+      // element, otherwise fun_name would be left uninitialized.
+      if (ei_decode_version(in_buff.buff, &index, &version) ||
+          ei_decode_tuple_header(in_buff.buff, &index, &arity) || arity < 1 ||
+          ei_decode_atom(in_buff.buff, &index, fun_name)) {
+        result = unifex_raise(env, "Unifex CNode: malformed message");
+      } else {
+        UnifexCNodeInBuff buff = {.buff = in_buff.buff, .index = &index};
+        result = unifex_cnode_handle_message(env, fun_name, &buff);
+      }
       unifex_cnode_reply_and_free(env, result);
       free_released_states(env);
       break;

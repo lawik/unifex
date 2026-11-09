@@ -42,16 +42,16 @@ defmodule Unifex.CodeGenerator.BaseTypes.Bool do
       ~g"""
       ({
         int res = -1;
-        char boolean_str[6];
-        ei_decode_atom(#{arg}->buff, #{arg}->index, boolean_str);
-
-        if (strcmp(boolean_str, "true") == 0) {
-          #{var_name} = 1;
-          res = 0;
-        }
-        else if (strcmp(boolean_str, "false") == 0) {
-          #{var_name} = 0;
-          res = 0;
+        char boolean_str[MAXATOMLEN + 1];
+        if (ei_decode_atom(#{arg}->buff, #{arg}->index, boolean_str) == 0) {
+          if (strcmp(boolean_str, "true") == 0) {
+            #{var_name} = 1;
+            res = 0;
+          }
+          else if (strcmp(boolean_str, "false") == 0) {
+            #{var_name} = 0;
+            res = 0;
+          }
         }
         res;
       })

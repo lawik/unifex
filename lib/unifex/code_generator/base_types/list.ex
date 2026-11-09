@@ -131,6 +131,25 @@ defmodule Unifex.CodeGenerator.BaseTypes.List do
       native_type = BaseType.generate_native_type(ctx.subtype, ctx.generator, ctx)
       %{subtype: subtype, postproc_fun: postproc_fun, generator: generator} = ctx
 
+      is_string_var_name = "unifex_is_string_#{counter_value}"
+      string_buff_var_name = "unifex_string_buff_#{counter_value}"
+
+      # A list of small integers is encoded as ERL_STRING_EXT and gets re-encoded
+      # into a temporary buffer. The buffer is freed after parsing the list below,
+      # but when an element fails to parse `postproc_fun` jumps straight to the
+      # exit label, so it has to be freed before that happens.
+      elem_postproc_fun = fn arg_getter ->
+        postproc_fun.(~g"""
+        ({
+          int unifex_elem_res_#{counter_value} = #{arg_getter};
+          if (unifex_elem_res_#{counter_value} && #{is_string_var_name}) {
+            ei_x_free(&#{string_buff_var_name});
+          }
+          unifex_elem_res_#{counter_value};
+        })
+        """)
+      end
+
       ~g"""
       ({
         int type;
@@ -140,11 +159,13 @@ defmodule Unifex.CodeGenerator.BaseTypes.List do
         #{len_var_name} = (unsigned int) size;
 
         int index = 0;
+        int #{is_string_var_name} = type == ERL_STRING_EXT;
+        ei_x_buff #{string_buff_var_name};
         UnifexCNodeInBuff unifex_buff_#{counter_value};
         UnifexCNodeInBuff *unifex_buff_ptr_#{counter_value} = &unifex_buff_#{counter_value};
-        if(type == ERL_STRING_EXT) {
-          ei_x_buff buff = unifex_cnode_string_to_list(#{arg}, #{len_var_name});
-          unifex_buff_#{counter_value}.buff = buff.buff;
+        if(#{is_string_var_name}) {
+          #{string_buff_var_name} = unifex_cnode_string_to_list(#{arg}, #{len_var_name});
+          unifex_buff_#{counter_value}.buff = #{string_buff_var_name}.buff;
           unifex_buff_#{counter_value}.index = &index;
         } else {
           unifex_buff_#{counter_value}.buff = #{arg}->buff;
@@ -162,12 +183,15 @@ defmodule Unifex.CodeGenerator.BaseTypes.List do
           #{BaseType.generate_arg_parse(subtype,
       elem_name,
       "unifex_buff_ptr_#{counter_value}",
-      postproc_fun,
+      elem_postproc_fun,
       generator,
       ctx)}
         }
         if(#{len_var_name}) {
           header_res = ei_decode_list_header(unifex_buff_ptr_#{counter_value}->buff, unifex_buff_ptr_#{counter_value}->index, &size);
+        }
+        if(#{is_string_var_name}) {
+          ei_x_free(&#{string_buff_var_name});
         }
         header_res;
       })
